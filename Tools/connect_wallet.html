@@ -4,96 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Connect MetaMask</title>
-    <script>
-        window.loadEthers = function() {
-            return new Promise((resolve, reject) => {
-                const existing = window.ethers;
-                if (existing) return resolve(existing);
-                const timeout = setTimeout(() => {
-                    reject(new Error('Ethers.js load timeout'));
-                }, 10000);
-                
-                const loadCDN = () => {
-                    const script = document.createElement('script');
-                    const sources = [
-                        'https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.0/ethers.umd.min.js',
-                        'https://unpkg.com/ethers@5.7.0/dist/ethers.umd.min.js',
-                        'https://www.unpkg.com/ethers@5.7.0/dist/ethers.umd.min.js',
-                        'https://cdn.jsdelivr.net/npm/ethers@5.7.0/dist/ethers.umd.min.js'
-                    ];
-                    // choose one source randomly
-                    const source = sources[Math.floor(Math.random() * sources.length)];
-                    script.src = source;
-                    script.onload = () => {
-                        clearTimeout(timeout);
-                        if (window.ethers) resolve(window.ethers);
-                        else reject(new Error('Ethers.js is undefined!'));
-                    };
-                    
-                    script.onerror = () => {
-                        // try next source
-                        const nextSource = sources.find(s => s !== source);
-                        if (nextSource) {
-                            console.warn(`CDN source failed : ${source}, trying ${nextSource}`);
-                            script.src = nextSource;
-                        } else {
-                            clearTimeout(timeout);
-                            reject(new Error('all CDN sources are failed'));
-                        }
-                    };
-                    
-                    document.head.appendChild(script);
-                };
-                // use local ethers.min.js
-                const localFallback = () => {
-                    const script = document.createElement('script');
-                    script.src = 'local-ethers.min.js';
-                    script.onload = () => {
-                        if (window.ethers) resolve(window.ethers);
-                        else reject(new Error('failed to load local Ethers'));
-                    };
-                    script.onerror = () => loadCDN();
-                    document.head.appendChild(script);
-                };
-                localFallback();
-            });
-        };
-    </script>
+    <!-- load Ethers.js -->
+    <script src="https://unpkg.com/ethers@5.7.0/dist/ethers.umd.min.js"></script>
+    <!-- 'https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.0/ethers.umd.min.js' -->
 </head>
 <body>
     <div class="container">
         <h1>Connect MetaMask</h1>        
-        <button id="connectButton" disabled>Initializing, please wait...</button>
+        <button id="connectButton">Connect</button>
+        <button id="disconnectButton" class="disconnect-btn" style="display:none;">Disconnect</button>
+        <div id="walletInfo"></div>
     </div>
     <script>
-        (async function() {
-            try {
-                const ethers = await window.loadEthers();
-                console.log('Ethers.js is loaded:', ethers.version);
-                setTimeout(() => {
-                    ethersStatus.style.display = 'none';
-                }, 2000);
-                
-                initApp(ethers);
-            } catch (error) {
-                console.error('Failed to load Ethers.js:', error);
-                ethersStatus.innerHTML = `
-                    <p class="error">Failed to load Ethers.js!</p>
-                    <p>Error: ${error.message}</p>
-                    <button onclick="location.reload()">Reload</button>
-                    <h4>Other solutions:</h4>
-                    <ul>
-                        <li>Check network connection</li>
-                        <li> <a href="https://github.com/ethers-io/ethers.js/releases" target="_blank">local file version</a></li>
-                    </ul>
-                `;
-            }
-        })();
-        
-        async function initApp(ethers) {
+        initApp();
+        async function initApp() {
+            console.log('connectButton is pressed');
             const connectButton = document.getElementById('connectButton');
-            connectButton.disabled = false;
-            connectButton.textContent = 'Connect MetaMask';
             connectButton.addEventListener('click', async () => {
                 try {
                     if (!window.ethereum) { // check if ethers exists
@@ -101,7 +27,13 @@
                         return;
                     }
                     const provider = new ethers.providers.Web3Provider(window.ethereum);
+                    // send request for accounts
                     const accounts = await provider.send("eth_requestAccounts", []);
+                    console.log("found", accounts.length, "accounts")
+                    accounts.array.forEach((account, index) => {console.log(account)});
+                    // if (accounts.length === 0) {
+                    // throw new Error('not found any account');
+                // }
                 } catch (error) {
                     console.error('Connection error:', error);
                 }
