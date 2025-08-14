@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect-Sign-Verify</title>
+    <!-- load Ethers.js -->
+    <script src="https://unpkg.com/ethers@5.7.0/dist/ethers.umd.min.js"></script>
+    <!-- 'https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.0/ethers.umd.min.js' -->
+</head>
+
+<body>
+    <div class="container">
+        <h1>Connect, Sign and Verify</h1>
+        <button id="connectButton">Connect</button>
+        <br>
+        Address: <span id="currentAddress">None</span>
+        <br><br>
+        <button id="signButton">Sign</button> <input type="text" id="message" />
+        <br>
+        Sign: <span id="currentSignature">none</span>
+        <br><br>
+        <button id="verifyButton">Verify</button> <span id="verifyResult">none</span>
+    </div>
+    <script>
+        const connectButton = document.getElementById('connectButton');
+        const currentAddress = document.getElementById('currentAddress');
+
+        const signButton = document.getElementById('signButton');
+        const currentMessage = document.getElementById('message');
+
+        const currentSignature = document.getElementById('currentSignature');
+
+        const verifyButton = document.getElementById('verifyButton');
+        const verifyResult = document.getElementById('verifyResult');
+        let signer;
+        initApp();
+        async function initApp() {
+            connectButton.addEventListener('click', connectWallet);
+            signButton.addEventListener('click', sign);
+            verifyButton.addEventListener('click', verify);
+        }
+
+        async function connectWallet() {
+            console.log('connectButton is pressed. Button text is ', connectButton.textContent);
+            if (connectButton.textContent == "Connect") {
+                console.log('Connecting...');
+                try {
+                    if (!window.ethereum) { // check if ethers exists
+                        alert('Please install MetaMask first!');
+                        return;
+                    }
+                    const provider = new ethers.providers.Web3Provider(window.ethereum);
+                    const accounts = await provider.send("eth_requestAccounts", []); // send request for accounts
+                    console.log("found", accounts.length, "accounts")
+                    signer = provider.getSigner(); // get account information
+                    address = await signer.getAddress();
+                    console.log("address", address)
+                    currentAddress.textContent = address; // set address
+                    connectButton.textContent = "Disconnect"; // set button text
+                } catch (error) {
+                    console.error('Connection error:', error);
+                }
+            } else {
+                currentAddress.textContent = "None";
+                connectButton.textContent = "Connect";
+            }
+        }
+        async function sign() {
+            message = currentMessage.value
+            console.log('signature: the message is', message);
+            signature = await signer.signMessage(message);
+            currentSignature.textContent = signature;
+        }
+
+        async function verify() {
+            message = currentMessage.value
+            signature = currentSignature.textContent
+            if (!message)
+                throw new Error('message to be verified is emtpy!');
+
+            const recoveredAddress = ethers.utils.verifyMessage(message, signature);
+            console.log("recovered address:", recoveredAddress)
+            if (recoveredAddress.toLowerCase() === currentAddress.textContent.toLowerCase()) {
+                console.log('verify PASS');
+                verifyResult.textContent = "PASS";
+            }else {
+                console.log('verify FAIL');
+                verifyResult.textContent = "FAIL";
+            }
+        }
+    </script>
+</body>
+
+</html>
