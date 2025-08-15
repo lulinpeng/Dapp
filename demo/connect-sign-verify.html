@@ -17,11 +17,13 @@
         <br>
         Address: <span id="currentAddress">None</span>
         <br><br>
-        <button id="signButton">Sign</button> <input type="text" id="message" />
+        <button id="signButton">Sign</button> <input type="text" id="message" size="30"/> <span id="currentDigest"> message digest </span>
         <br>
         Sign: <span id="currentSignature">none</span>
         <br><br>
         <button id="verifyButton">Verify</button> <span id="verifyResult">none</span>
+        <br><br>
+        <button id="GetPk">GetPk</button> <span id="publicKey">none</span>
     </div>
     <script>
         const connectButton = document.getElementById('connectButton');
@@ -30,16 +32,25 @@
         const signButton = document.getElementById('signButton');
         const currentMessage = document.getElementById('message');
 
+        const currentDigest = document.getElementById('currentDigest');
+
         const currentSignature = document.getElementById('currentSignature');
 
         const verifyButton = document.getElementById('verifyButton');
         const verifyResult = document.getElementById('verifyResult');
+
+        const getPkButton = document.getElementById('GetPk');
+        const publicKey = document.getElementById('publicKey');
+
         let signer;
+
         initApp();
         async function initApp() {
             connectButton.addEventListener('click', connectWallet);
             signButton.addEventListener('click', sign);
             verifyButton.addEventListener('click', verify);
+            currentMessage.addEventListener('input', input);
+            getPkButton.addEventListener('click', recoverPublicKey);
         }
 
         async function connectWallet() {
@@ -67,19 +78,20 @@
                 connectButton.textContent = "Connect";
             }
         }
+
         async function sign() {
-            message = currentMessage.value
+            message = currentMessage.value;
             console.log('signature: the message is', message);
             signature = await signer.signMessage(message);
-            currentSignature.textContent = signature;
+            currentSignature.textContent = signature;            
         }
 
         async function verify() {
-            message = currentMessage.value
-            signature = currentSignature.textContent
+            message = currentMessage.value;
+            signature = currentSignature.textContent;
             if (!message)
                 throw new Error('message to be verified is emtpy!');
-
+            
             const recoveredAddress = ethers.utils.verifyMessage(message, signature);
             console.log("recovered address:", recoveredAddress)
             if (recoveredAddress.toLowerCase() === currentAddress.textContent.toLowerCase()) {
@@ -90,6 +102,22 @@
                 verifyResult.textContent = "FAIL";
             }
         }
+
+        async function recoverPublicKey() {
+            digest = ethers.utils.hashMessage(message);
+            signature = currentSignature.textContent;
+            // https://docs.ethers.org/v5/api/utils/signing-key/
+            public_key = ethers.utils.recoverPublicKey(digest, signature);
+            publicKey.textContent = public_key;
+        }
+
+        async function input() {
+            message = currentMessage.value;
+            digest = ethers.utils.hashMessage(message);
+            console.log("Digest:", digest);
+            currentDigest.textContent = digest;
+        }
+
     </script>
 </body>
 
