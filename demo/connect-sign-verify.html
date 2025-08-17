@@ -15,15 +15,31 @@
         <h1>Connect, Sign and Verify</h1>
         <button id="connectButton">Connect</button>
         <br>
-        Address: <span id="currentAddress">None</span>
+        address: <span id="currentAddress" style="font-family: Arial; font-size:16px; color:rgb(89, 137, 87);">none</span>
         <br><br>
-        <button id="signButton">Sign</button> <input type="text" id="message" size="30"/> <span id="currentDigest"> message digest </span>
+        <button id="signButton">Sign</button> <input type="text" id="message" size="30" placeholder="message to be signed"/> 
+        h: <span id="currentDigest"> none </span>
         <br>
-        Sign: <span id="currentSignature">none</span>
+        signature(r,s,v): <span id="currentSignature" style="font-family: Arial; font-size:16px; color:rgb(233, 109, 15);">none</span>
+        <br>
+        r: <span id="currentSignature_r" style="font-family: Arial; font-size:16px; color:green;">none</span>
+        <br>
+        s: <span id="currentSignature_s" style="font-family: Arial; font-size:16px; color:green;">none</span>
+        <br>
+        v: <span id="currentSignature_v" style="font-family: Arial; font-size:16px; color:green;">none</span>
+        <br>
+        public key: <span id="publicKey" style="font-family: Arial; font-size:16px; color:rgb(20, 89, 218);">none</span>
         <br><br>
-        <button id="verifyButton">Verify</button> <span id="verifyResult">none</span>
-        <br><br>
-        <button id="GetPk">GetPk</button> <span id="publicKey">none</span>
+        <button id="verifyButton">Verify</button> 
+        <br>
+        <input type="text" id="message_to_verify" size="30" placeholder="message to be verified"/>  
+        h: <span id="verify_message_digest"> none </span>
+        <br>
+        <input type="text" id="signature_to_verify" size="80" placeholder="signature to be verified"/>  
+        <br>
+        recovered address: <span id="recovered_address" style="font-family: Arial; font-size:16px; color:rgb(89, 137, 87);">none</span>
+        <br>
+        verify result: <span id="verifyResult" style="font-family: Arial; font-size:16px; color:rgb(27, 193, 226);">none</span>
     </div>
     <script>
         const connectButton = document.getElementById('connectButton');
@@ -35,11 +51,16 @@
         const currentDigest = document.getElementById('currentDigest');
 
         const currentSignature = document.getElementById('currentSignature');
+        const currentSignature_r = document.getElementById('currentSignature_r');
+        const currentSignature_s = document.getElementById('currentSignature_s');
+        const currentSignature_v = document.getElementById('currentSignature_v');
 
         const verifyButton = document.getElementById('verifyButton');
+        const verifyMessage = document.getElementById('message_to_verify');
+        const verifyMessageDigest = document.getElementById('verify_message_digest');
+        const verifySignature = document.getElementById('signature_to_verify');
         const verifyResult = document.getElementById('verifyResult');
 
-        const getPkButton = document.getElementById('GetPk');
         const publicKey = document.getElementById('publicKey');
 
         let signer;
@@ -50,7 +71,7 @@
             signButton.addEventListener('click', sign);
             verifyButton.addEventListener('click', verify);
             currentMessage.addEventListener('input', input);
-            getPkButton.addEventListener('click', recoverPublicKey);
+            verifyMessage.addEventListener('input', verify_input);
         }
 
         async function connectWallet() {
@@ -82,18 +103,41 @@
         async function sign() {
             message = currentMessage.value;
             console.log('signature: the message is', message);
+            if (message == '') console.log('message is emtpy');
+            console.log('signer:', signer)
+            if (signer === undefined){
+                alert('Please connect your wallet first!');
+                return;
+            }
             signature = await signer.signMessage(message);
-            currentSignature.textContent = signature;            
+            currentSignature.textContent = signature;// r, s, v
+            r = signature.slice(0, 66); // "0x" + 64 hex chars
+            s = "0x" + signature.slice(66, 130);    // 64 hex chars
+            v = parseInt(signature.slice(130), 16); // v equals 27 or 28
+            currentSignature_r.textContent = r;
+            currentSignature_s.textContent = s;
+            currentSignature_v.textContent = v;
+
+            digest = ethers.utils.hashMessage(message);
+            // signature = currentSignature.textContent;
+            // https://docs.ethers.org/v5/api/utils/signing-key/
+            public_key = ethers.utils.recoverPublicKey(digest, signature);
+            publicKey.textContent = public_key;
         }
 
         async function verify() {
-            message = currentMessage.value;
-            signature = currentSignature.textContent;
-            if (!message)
-                throw new Error('message to be verified is emtpy!');
-            
+            message = verifyMessage.value;
+            console.log('message:', message)
+            if (message == '') console.log('message is emtpy');
+            signature = verifySignature.value;
+            console.log('signature:', signature)   
+            if (signature == ''){
+                alert('The signature to be verified is empty!');
+                return
+            }         
             const recoveredAddress = ethers.utils.verifyMessage(message, signature);
             console.log("recovered address:", recoveredAddress)
+            recovered_address.textContent = recoveredAddress;
             if (recoveredAddress.toLowerCase() === currentAddress.textContent.toLowerCase()) {
                 console.log('verify PASS');
                 verifyResult.textContent = "PASS";
@@ -103,14 +147,6 @@
             }
         }
 
-        async function recoverPublicKey() {
-            digest = ethers.utils.hashMessage(message);
-            signature = currentSignature.textContent;
-            // https://docs.ethers.org/v5/api/utils/signing-key/
-            public_key = ethers.utils.recoverPublicKey(digest, signature);
-            publicKey.textContent = public_key;
-        }
-
         async function input() {
             message = currentMessage.value;
             digest = ethers.utils.hashMessage(message);
@@ -118,6 +154,12 @@
             currentDigest.textContent = digest;
         }
 
+        async function verify_input() {
+            message = verifyMessage.value;
+            digest = ethers.utils.hashMessage(message);
+            console.log("Digest:", digest);
+            verifyMessageDigest.textContent = digest;
+        }
     </script>
 </body>
 
